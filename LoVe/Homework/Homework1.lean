@@ -81,7 +81,42 @@ useful.
 
 Feel free to introduce abbreviations to avoid repeating large contexts `C`. -/
 
+/-
 
+----------------------------------------------------- Var
+C, f: (α → β → γ), g : (α → β), a : α ⊢ f : α → β → γ
+
+
+--------------------------------------------- Var
+C, f: (α → β → γ), g : (α → β), a : α ⊢ a : α
+
+
+C₁ ⊢ f : α → β → γ   C₁ ⊢ a : α
+-------------------------------- App
+C₁ ⊢ f a : β → γ
+
+
+------------------------------------------------- Var
+C, f: (α → β → γ), g : (α → β), a : α ⊢ g : α → β
+
+
+--------------------------------------------- Var
+C, f: (α → β → γ), g : (α → β), a : α ⊢ a : α
+
+C₁ ⊢ g : α → β   C₁ ⊢ a : α
+---------------------------- App
+C₁ ⊢ g a : β
+
+C₁ ⊢ f a : β → γ    C₁ ⊢ g a : β
+--------------------------------  App
+C₁ ⊢ f a (g a) : γ
+
+C₁ := C, f: (α → β → γ), g : (α → β), a : α
+
+C, f: (α → β → γ), g : (α → β), a : α ⊢ f a (g a) : γ
+------------------------------------------------------ Fun
+C ⊢ fun f g a => f a (g a) ⊢ (α → β → γ) → (α → β) → α → γ
+-/
 
 /- ## Question 3 (3 points): Implicit Arguments
 
@@ -147,11 +182,15 @@ use the notation `xs ++ ys` for `List.append xs ys`. -/
 
 -- write your solution here
 
+def reverse { a : Type } : List a → List a
+  | [] => []
+  | a :: xs => reverse xs ++ [a]
+
 -- Once you've written your solution, uncomment these test cases and check that
 -- they give the expected outputs
--- #eval reverse [1, 2, 3, 4, 5] -- expected: [5, 4, 3, 2, 1]
--- #eval reverse ([] : List ℕ)  -- expected: []
--- #eval @reverse ℕ []          -- expected: []
+#eval reverse [1, 2, 3, 4, 5] -- expected: [5, 4, 3, 2, 1]
+#eval reverse ([] : List ℕ)  -- expected: []
+#eval @reverse ℕ []          -- expected: []
 
 /- Notice that when the list argument to `reverse` is empty, it is not clear
 what type should be filled in for `α`. (Try evaluating `reverse []`, without
@@ -190,13 +229,13 @@ def f (x : ℕ) (y : ℕ := 1) (w : ℕ := 2) (z : ℕ) :=
 
 Change the value of `z` below so that the expression evaluates to `2`. -/
 
-#eval f (z := 3) 1
+#eval f (z := 2) 1
 
 /- ### 3.3 (1 point)
 
 Specify a value for `w` below so that the expression evaluates to `5`. -/
 
-#eval f (y := 3) (x := 1) (z := 1)
+#eval f (y := 3) (x := 1) (z := 1) (w := 2)
 
 /-
 ## Question 4 (5 points): Combining Lists
@@ -214,8 +253,10 @@ Implement a function `meld` that performs this operation.
 -/
 
 @[autogradedDef 2, validTactics #[rfl, simp [meld]]]
-def meld {α β γ : Type} : (α → β → γ) → List α → List β → List γ
-  := sorry
+def meld {α β γ : Type} (f : α → β → γ) : List α → List β → List γ
+  | (x::xs), (y::ys) => f x y :: meld f xs ys
+  | _, _ => []
+
 
 /-!
 ### 4.2 (1 point)
@@ -238,7 +279,7 @@ below is to replace `sorry` with a *non-recursive* function.
 -/
 @[autogradedDef 1, validTactics #[rfl]]
 def zip {α β : Type} : List α → List β → List (α × β) :=
-meld sorry
+meld Prod.mk -- (@Prod.mk α β) turns out it also works with inference :D
 
 /- ### 4.3 (1 point)
 
@@ -249,7 +290,7 @@ lists.
 Hint: `min : ℕ → ℕ → ℕ` returns the minimum of two numbers. -/
 
 -- Replace `True` with your lemma statement. No need to fill in the `sorry`!
-theorem length_meld : True := sorry
+theorem length_meld {α β γ : Type} (f : α → β → γ) (la: List α) (lb: List β) : List.length (meld f la lb) == min (List.length la) (List.length lb)  := sorry
 
 /- ### 4.4 (1 point)
 
@@ -270,7 +311,15 @@ theorem swap_zip {α β : Type} (xs : List α) (ys : List β) :
   (zip xs ys).map Prod.swap = zip ys xs :=
 sorry
 
+/-
+This theorem holds because in both cases
+a) the resulting list is truncated to the length of the shorter list
+b) in each case elements are combined by the same index in the same order (e.g.
+0'th then 1st, then 2nd)
 
+To each of those pairs `swap` is applied exactly once, meaning that the
+resulting pairs have the order (and type) β × α
+-/
 
 /-
 ## Question 5 (2 points): searching Mathlib
