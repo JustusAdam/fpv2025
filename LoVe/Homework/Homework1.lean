@@ -1,6 +1,7 @@
 import LoVe.LoVelib
 import AutograderLib
 import Mathlib
+import Mathlib.Combinatorics.SimpleGraph.Basic
 
 namespace LoVe
 namespace HW1
@@ -357,6 +358,33 @@ How is it stated there? Is there syntax you don't understand?
 
 -/
 
--- Your answer here!
+/-
+I've tried to come up with something, but my last math class is going on to
+being 10 years ago so I genuinely don't remember any proofs that would make
+sense to try here.
+
+What I could think of was trying to prove that graphs are planar iff they don't
+contain K₃,₃ or K₅.
+
+I however couldn't figure out how to state what it means to be planar, so
+instead I'm stating that, if the graph satisfies Kuratowski's theorem, then it
+also satisfies Euler's formula.
+-/
+
+-- opaque K33 {α : Type} : SimpleGraph α
+-- opaque K5 {α : Type} : SimpleGraph α
+
+-- def vertices {α : Type} (g : SimpleGraph α) : Set α :=
+--   { i : α | ∃ j : α, g.Adj i j ∨ g.Adj j i}
+
+-- def setSize {α : Type} (s: Finset α) : ℕ :=
+--   Multiset.sizeOf s.val
+
+-- def faces {α : Type} (g: SimpleGraph α) : Finset (Finset α) := sorry
+
+-- theorem SimpleGraph_kuratowski_and_euler {V : Type} (g : SimpleGraph V) :
+--   (¬ K33 ≤ g ∧ ¬ K5 ≤ g ∧ SimpleGraph.Connected g ∧ SimpleGraph.fintypeEdgeSet g) →
+--   setSize (vertices g) - setSize g.edgeSet + setSize (faces g) = 2 := sorry
+
 
 end HW1 end LoVe
