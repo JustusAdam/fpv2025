@@ -25,16 +25,29 @@ Section 3.3 in the Hitchhiker's Guide.
 Think about the similarity to the type inhabitation problems of HW1! -/
 
 @[autogradedProof 1] theorem B (a b c : Prop) :
-  (a → b) → (c → a) → c → b :=
-  sorry
+  (a → b) → (c → a) → c → b := by
+  intro atb cta hc
+  apply atb
+  apply cta
+  exact hc
 
 @[autogradedProof 1] theorem S (a b c : Prop) :
-  (a → b → c) → (a → b) → a → c :=
-  sorry
+  (a → b → c) → (a → b) → a → c := by
+  intro abc atb ha
+  apply abc
+  exact ha
+  apply atb
+  exact ha
 
 @[autogradedProof 1] theorem more_nonsense (a b c : Prop) :
-  (c → (a → b) → a) → c → b → a :=
-  sorry
+  (c → (a → b) → a) → c → b → a := by
+  intro f hc hb
+  apply f
+  { exact hc }
+  {
+    have g (_: a) : b := hb
+    exact g
+  }
 
 /- For an extra challenge: translate the `weak_peirce` type inhabitation
 problem from HW1 into a theorem statement, and prove the theorem! -/
@@ -54,8 +67,16 @@ Hints:
   for `False` at some point in the proof. -/
 
 @[autogradedProof 1] theorem about_Impl (a b : Prop) :
-  ¬ a ∨ b → a → b :=
-  sorry
+  ¬ a ∨ b → a → b := by
+  intro nab ha
+  apply Or.elim nab
+  {
+    intro na
+    contradiction
+  }
+  {
+    apply id
+  }
 
 /- ### 2.2 (2 points).
 
@@ -103,8 +124,16 @@ Hints:
 
 @[autogradedProof 2, validAxioms #[Quot.sound, propext, funext]]
 theorem EM_of_DN :
-  DoubleNegation → ExcludedMiddle :=
-  sorry
+  DoubleNegation → ExcludedMiddle := by
+  rw [DoubleNegation, ExcludedMiddle]
+  intro dn a
+  apply dn
+  apply Not.intro
+  intro ana
+  rw [not_or] at ana
+  have hna := dn a (And.right ana)
+  have ha  := And.left ana
+  contradiction
 
 /- In this week's lab, you'll have the option to prove a few more implications.
 We state them `sorry`ed here, for reference and use;
@@ -118,13 +147,39 @@ theorem DN_of_Peirce :
   Peirce → DoubleNegation :=
   sorry
 
-/- ### 2.3 (2 points). 
+/- ### 2.3 (2 points).
 
-We have three of the six possible implications between `ExcludedMiddle`, 
+We have three of the six possible implications between `ExcludedMiddle`,
 `Peirce`, and `DoubleNegation`. State and prove the three missing implications,
 exploiting the three theorems we already have. -/
 
 -- enter your solution here
+
+/-
+                | Peirce | Excluded Middle | Double Negation
+Peirce          | -      | x               | o
+Excluded Middle | o      | -               | x
+Double Negation | x      |                 | -
+-/
+
+theorem Peirce_of_DM : DoubleNegation → Peirce := by
+  intro dn
+  apply Peirce_of_EM
+  exact EM_of_DN dn
+  done
+
+theorem EM_of_Peirce : Peirce → ExcludedMiddle := by
+  intro peirce
+  apply EM_of_DN
+  exact DN_of_Peirce peirce
+  done
+
+
+theorem DN_of_EM : ExcludedMiddle → DoubleNegation := by
+  intro em
+  apply DN_of_Peirce
+  exact Peirce_of_EM em
+  done
 
 /- ## Question 3 (3 points): Equality
 
@@ -152,12 +207,19 @@ using `Eq.symm`, `Eq.trans`, or `Eq.subst`. You should not use any tactics
 besides `apply`, `exact`, and `rfl`. -/
 
 @[autogradedProof 1, validAxioms #[LoVe.BackwardProofs.symmtrans]]
-theorem my_symm (h : b = a) : a = b :=
-  sorry
+theorem my_symm (h : b = a) : a = b := by
+  apply symmtrans
+  rfl
+  exact h
+  done
 
 @[autogradedProof 2, validAxioms #[LoVe.BackwardProofs.symmtrans]]
-theorem my_trans (h1 : a = b) (h2 : b = c) : a = c :=
-  sorry
+theorem my_trans (h1 : a = b) (h2 : b = c) : a = c := by
+  apply symmtrans h1
+  apply symmtrans
+  rfl
+  exact h2
+  done
 
 end
 
@@ -199,8 +261,27 @@ definition, you can use `rw`.) -/
 @[autogradedProof 3,
   validAxioms #[LoVe.BackwardProofs.fermats_last_theorem, Quot.sound, propext, funext, Classical.choice]]
 theorem pythagorean_triple_not_all_squares (a b c : ℕ) :
-  IsPythagoreanTriple a b c → ¬(IsSquare a ∧ IsSquare b ∧ IsSquare c) :=
-  sorry
+  IsPythagoreanTriple a b c → ¬(IsSquare a ∧ IsSquare b ∧ IsSquare c) := by
+  rw [IsSquare, IsSquare, IsSquare, IsPythagoreanTriple]
+  intro hsq
+  apply Not.intro
+  apply And.elim
+  intro eah
+  apply And.elim
+  intro ebh ech
+  apply Exists.elim eah
+  intro a_1 a_1_is_root
+  apply Exists.elim ebh
+  intro b_1 b_1_is_root
+  apply Exists.elim ech
+  intro c_1 c_1_is_root
+  rw [a_1_is_root, b_1_is_root, c_1_is_root] at hsq
+  apply fermats_last_theorem a_1 b_1 4
+  decide
+  apply Exists.intro c_1
+  rw [square_square]
+  exact hsq
+  done
 
 end BackwardProofs
 end LoVe
