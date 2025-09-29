@@ -37,8 +37,8 @@ term.
 Hint: There's an easy way and a hard way. Anything goes. -/
 
 @[autogradedProof 1] theorem about_Impl_term :
-  ∀a b : Prop, ¬ a ∨ b → a → b :=
-  sorry
+  ∀a b : Prop, ¬ a ∨ b → a → b := fun a b naob ha =>
+  naob.elim (Not.elim . ha) id
 
 /- ### 1.2 (2 points).
 
@@ -47,7 +47,11 @@ structured proof, with `fix`, `assume`, and `show`. -/
 
 @[autogradedProof 2] theorem about_Impl_struct :
   ∀a b : Prop, ¬ a ∨ b → a → b :=
-  sorry
+  fix a b : Prop
+  fix aorb : ¬ a ∨ b
+  assume ha : a
+  show b from
+    aorb.neg_resolve_left ha
 
 /- ### 1.3 (2 points).
 
@@ -56,8 +60,14 @@ Prove it! For an extra challenge, prove it without using classical logic --
 no `Classical.em` or `Classical.byContradiction`. -/
 
 @[autogradedProof 2]
-lemma not_iff_not_self (P : Prop) : ¬ (P ↔ ¬ P) :=
- sorry
+lemma not_iff_not_self (P : Prop) : ¬ (P ↔ ¬ P) := by
+  intro niff
+  apply niff.elim
+  intro fwd bck
+  have hna : ¬ P :=
+    Not.intro <| fun hp => (fwd hp).elim hp
+  have na : P := bck hna
+  exact hna.elim na
 
 example (Q : Prop) : ¬ (Q ↔ ¬ Q) :=
   not_iff_not_self Q
@@ -76,7 +86,8 @@ Provide a structured proof showing that this premise implies `False`. -/
   (shaves : Person → Person → Prop)
   (barber : Person)
   (h : ∀ x, shaves barber x ↔ ¬ shaves x x) : False :=
-   sorry
+  have hb := h barber
+  not_iff_not_self _ hb
 
 /- ## Question 2 (3 points): Connectives and Quantifiers
 
@@ -86,8 +97,21 @@ rules for `∀`, `∨`, and `↔`. -/
 
 @[autogradedProof 3] theorem Or_comm_under_All {α : Type} (p q : α → Prop) :
   (∀x, p x ∨ q x) ↔ (∀x, q x ∨ p x) :=
-  sorry
-
+  let L := (∀x, p x ∨ q x)
+  let R := (∀x, q x ∨ p x)
+  have atb : L → R :=
+    fix l : (∀x, p x ∨ q x)
+    fix x : α
+    match l x with
+    | .inl li => Or.inr li
+    | .inr ri => Or.inl ri
+  have bta : R → L :=
+    fix r : (∀x, q x ∨ p x)
+    fix x : α
+    match r x with
+    | .inl li => Or.inr li
+    | .inr ri => Or.inl ri
+  Iff.intro atb bta
 namespace Quasicontractibility
 
 /- ## Question 3 (6 points): Characterizing Types from Functions
@@ -119,6 +143,28 @@ isomorphism.") -/
 
 /-
 Write your answer to part 1 here.
+
+Class 0: With zero elements: Empty, False, any inductive definition with no constructors
+Class 1: With one element: Unit, True, any inductive definition with only one
+constructor that takes no arguments
+
+Plus all product-compositions of such types.
+Any sum composition of only class 1 types are themselves class 1, e.g. (True
+∧ (True ∧ True)) or (Unit × Unit)
+Any sum-composition with at least one class 0 element is class 0, e.g. (Empty ×
+Unit) or (False ∧ False)
+
+In effect the class of any product composition is the minimum of the class of
+each constituent type
+
+Classes of sum-compositions then work the opposite way with resulting class
+being the maximum of the class of the constituent types.
+For example
+- class 0 composition (False ∨ False) is class 0
+- class 0-1 composition (Unit ⊕ Empty) is class 1 (because Sum.inl Unit can be
+constructed)
+- class 1-1 compositions is no longer contractible, because the two different
+constructors are distinguishable. In fact this type is isomorphic to Bool.
 -/
 
 /-! The next item will make use of the *associativity* and *injectivity*
@@ -157,7 +203,15 @@ this fact below. -/
 @[autogradedProof 2]
 theorem exists_assoc_inj_of_quasicontractible {α : Type} :
   Quasicontractible α → ∃ f : α → α → α, Associative f ∧ Injective₂ f :=
-sorry
+  fix cont : ∀ (a b : α), a = b
+  have f : α → α → α := λ a _ => a
+  have f_assoc : ∀ a b c : α, f (f a b) c = f a (f b c) := λ a b c =>
+    cont (f (f a b) c) (f a (f b c))
+  have f_inj : ∀ (a : α) (b : α) (a' : α) (b' : α), f a b = f a' b' → a = a' ∧ b
+  = b'
+  := λ a b a' b' feq => And.intro (cont a a') (cont b b')
+  have h : Associative f ∧ Injective₂ f := And.intro f_assoc f_inj
+  Exists.intro f h
 
 /- In fact, it turns out that functions that are both injective and associative
 *only* exist on quasicontractible types! That is, if there exists an
@@ -187,8 +241,24 @@ to `hassoc : ∀ a b c : α, f (f a b) c = f a (f b c)`. -/
 
 @[autogradedProof 2]
 theorem quasicontractible_of_exists_assoc_inj {α : Type} :
-  (∃ f : α → α → α, Associative f ∧ Injective₂ f) → Quasicontractible α :=
-sorry
+  (∃ f : α → α → α, Associative f ∧ Injective₂ f) → Quasicontractible α := by
+  intro e
+  unfold Quasicontractible
+  intro a b
+  apply Exists.elim e
+  intro f p
+  apply p.elim
+  intro assoc inj
+  unfold Associative at assoc
+  unfold Injective₂ at inj
+
+  have h : f a b = a ∧ a = f b a :=
+    inj _ _ _ _ (assoc a b a)
+  have fab : f a b = f b a :=
+    Eq.trans h.left h.right
+  have i := inj _ _ _ _ fab
+  exact i.left
+  done
 
 /- 3.4 (1 point). Using `quasicontractible_of_exists_assoc_inj`, prove that
 there exists no associative, injective binary operation on the natural numbers.
@@ -200,8 +270,12 @@ Hint: try to get an obviously false statement in your context, then use the
 
 @[autogradedProof 1]
 theorem no_inj_assoc_on_nats :
-  ¬∃ f : Nat → Nat → Nat, Associative f ∧ Injective₂ f :=
-sorry
+  ¬∃ f : Nat → Nat → Nat, Associative f ∧ Injective₂ f := by
+  intro p
+  have q_conn := quasicontractible_of_exists_assoc_inj p
+  have zero_is_one := q_conn 0 1
+  contradiction
+  done
 
 end Quasicontractibility
 end LoVe
