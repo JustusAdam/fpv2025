@@ -111,8 +111,8 @@ Define the function `List.mySum` that sums the elements of a
 `List ℕ`, using dot notation where applicable. -/
 
 @[autogradedDef 1, validTactics #[rfl, simp [List.mySum]]]
-def List.mySum : List ℕ → ℕ
-:= sorry
+def List.mySum (l : List ℕ) : ℕ
+:= l.foldl (. + .) 0
 
 namespace LoVe
 
@@ -123,6 +123,7 @@ the same effect as the one below: -/
 
 #eval List.mySum [1, 2, 3, 4]  -- 10
 -- write your solution here
+#eval [1,2,3,4].mySum
 
 
 /- Dot notation even works for proofs! If `hpq : P ∧ Q`, then `hpq.left : P`
@@ -134,7 +135,10 @@ Write as short of a term mode proof as you can of the
 following lemma, using dot notation at least once: -/
 
 lemma dotAndSwap (P Q R : Prop) (hpq : P ∧ Q ∧ R) : Q ∧ P :=
-sorry
+hpq.rotate.rotate.right.symm
+-- I like the one below better in terseness, but if we're maxing out dots then
+-- I think above takes the cake.
+-- (hpq.imp_right And.left).symm
 
 /- ### Golf bonus (0 points).
 
@@ -200,8 +204,10 @@ Show that if a function is both commutative and associative,
 then it is left-commutative. -/
 
 @[autogradedProof 1] theorem leftCommutative_of_commutative_associative {α : Type} :
-  ∀ (f : α → α → α), Commutative f ∧ Associative f → LeftCommutative f :=
-  sorry
+  ∀ (f : α → α → α), Commutative f ∧ Associative f → LeftCommutative f := by
+  intro f h a a' b
+  rw (occs := .pos [2]) [h.left]
+  rw [←h.right, h.left]
 
 /- ### 2.2 (4 points).
 
@@ -221,16 +227,25 @@ Here are some helpful reminders for the proofs:
 * The `contradiction` tactic can prove any goal (including `False`) if you have
   an "obviously" impossible hypothesis in your context (e.g., `true = false`) -/
 
-def g : sorry := sorry
+def g (a : Bool) (b : Bool) : Bool := ¬ a ∨ b
 
-@[autogradedProof 1] theorem g_leftCommutative : LeftCommutative g :=
-  sorry
+@[autogradedProof 1] theorem g_leftCommutative : LeftCommutative g := by
+  unfold LeftCommutative
+  intro a a' b
+  simp [g]
+  ac_rfl
 
-@[autogradedProof 1] theorem g_not_commutative : ¬Commutative g :=
-  sorry
+@[autogradedProof 1] theorem g_not_commutative : ¬Commutative g := by
+  unfold Commutative
+  intro a
+  have ha := a true false
+  contradiction
 
-@[autogradedProof 1] theorem g_not_associative : ¬Associative g :=
-  sorry
+@[autogradedProof 1] theorem g_not_associative : ¬Associative g := by
+  unfold Associative
+  intro h
+  have ha := h true false
+  contradiction
 
 /- Now that we've seen some properties of left-commutativity in the abstract,
 let's look at its significance in the context that motivated its definition in
@@ -258,9 +273,23 @@ def foldr {α β : Type} : (α → β → β) → β → List α → β
 
 @[autogradedProof 3] theorem foldl_eq_foldr_of_leftCommutative {α β : Type} :
   ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (xs : List α),
-  foldl g z xs = foldr g z xs :=
-  sorry
+  foldl g z xs = foldr g z xs := by
+  intro g lcomm z xs
+  unfold foldl foldr
+  induction xs with
+  | nil => dsimp
+  | cons head tail tail_ih =>
+    simp
 
+    -- cases tail
+    -- unfold foldl foldr
+    -- rfl
+    -- rename_i head2 tail2
+    -- dsimp at tail_ih
+    -- unfold foldl
+
+
+  done
 
 /- ### 2.4 (1 point).
 
