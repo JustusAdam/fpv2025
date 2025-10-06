@@ -271,6 +271,27 @@ def foldr {α β : Type} : (α → β → β) → β → List α → β
   | f, z, []        => z
   | f, z, (x :: xs) => f x (foldr f z xs)
 
+lemma temp {α β : Type} : ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (x : α) (xs : List α), foldr g z (x :: xs) = g x (foldr g z xs) := by
+  intro g hg z x xs
+  induction xs
+  rfl
+  rename_i head tail ih
+  unfold foldr
+  rw [hg, ←ih]
+  unfold foldr
+  rw [hg]
+  done
+
+lemma temp2 {α β : Type} : ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (x : α) (xs : List α), foldl g z (x :: xs) = g x (foldl g z xs) := by
+  intro g hg z x xs
+  induction xs
+  rfl
+  rename_i head tail ih
+  unfold foldl
+  rw (occs := [1]) [foldl]
+  rw (occs:=[1]) [foldl] at ih
+
+
 @[autogradedProof 3] theorem foldl_eq_foldr_of_leftCommutative {α β : Type} :
   ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (xs : List α),
   foldl g z xs = foldr g z xs := by
@@ -280,12 +301,16 @@ def foldr {α β : Type} : (α → β → β) → β → List α → β
   | nil => dsimp
   | cons head tail tail_ih =>
     simp
-
-    -- cases tail
-    -- unfold foldl foldr
-    -- rfl
-    -- rename_i head2 tail2
-    -- dsimp at tail_ih
+    cases tail
+    unfold foldl foldr
+    rfl
+    rename_i head2 tail2
+    dsimp at tail_ih
+    unfold foldl foldr
+    rw [← tail_ih]
+    rw [←temp2 g lcomm]
+    rw (occs :=[1]) [foldl]
+    rw [lcomm]
     -- unfold foldl
 
 
@@ -301,8 +326,9 @@ equal left and right folds, then that function must be left-commutative. -/
 @[autogradedProof 1] theorem leftCommutative_of_foldl_eq_foldr {α β : Type} :
   ∀ (g : α → β → β),
     (∀ (z : β) (xs : List α), foldl g z xs = foldr g z xs) →
-    LeftCommutative g :=
-  sorry
+    LeftCommutative g := by
+  intro g z
+
 
 
 
@@ -395,8 +421,9 @@ You'll need to complete the type as well as implement the function! -/
 
 @[autogradedDef 1, validTactics #[rfl, simp [HList.append]]]
 -- induction_and_simp 2 2 HList.append]]
-def HList.append {αs βs : List Type} : HList αs → HList βs → sorry
-  := sorry
+def HList.append {αs βs : List Type} : HList αs → HList βs → HList (αs ++ βs)
+| H[], xs => xs
+| y ::: ys, xs => y ::: HList.append ys xs
 
 
 /- Heterogeneous lists can be used in conjunction with traditional lists to
@@ -434,7 +461,7 @@ definition of a function below that maps `αs` to some `βs : List Type` such th
 
 @[autogradedDef 1, validTactics #[rfl, simp [columnwiseType, induction_and_simp 0 1 columnwiseType]]]
 def columnwiseType (αs : List Type) : List Type :=
-  sorry
+  αs.map List
 
 /-
 ### 4.3 (2 points).
@@ -453,9 +480,16 @@ def HList.hd {α αs} : HList (α :: αs) → α
 def HList.tl {α αs} : HList (α :: αs) → HList αs
   | HList.cons _ xs => xs
 
+def addToTable : {αs : List Type} → (elem : HList αs) → (self : HList (columnwiseType αs)) → HList (columnwiseType αs)
+  | [], _, H[] => H[]
+  | t::ts, x:::xs, l:::ls => (x::l) ::: addToTable xs ls
+
 def listHlistToHlistList :
   ∀ {αs : List Type}, List (HList αs) → HList (columnwiseType αs)
-  := sorry
+| [], _ => H[]
+| t::ts, [] => []:::listHlistToHlistList []
+| t::ts, x::xs => addToTable x (listHlistToHlistList xs)
+
 
 /- But what about the other direction? We might be tempted to declare a function
 that turns a collection of columns into a collection of rows. That function
@@ -497,8 +531,14 @@ def pickFromSingletonList {τ} : ∀ {xs : List τ}, List.length xs = 1 → τ
   | x :: _, _ => x
 
 @[autogradedProof 2]
-theorem length_hllh_false : ¬ length_hllh :=
-  sorry
+theorem length_hllh_false : ¬ length_hllh := by
+  intro ha
+  unfold length_hllh at ha
+  let l : HList [List ℕ, List Empty] := [1]:::H[[]]
+  let t : List (HList [ℕ, Empty]) := hlistListToListHlist l
+  let hl := ha ℕ Empty l
+  let H[_, e] := pickFromSingletonList hl
+  exact e.elim
 
 /- ### 4.5 (1 point).
 
