@@ -307,10 +307,13 @@ lemma temp2 {α β : Type} : ∀ (g : α → β → β) (hg : LeftCommutative g)
     rename_i head2 tail2
     dsimp at tail_ih
     unfold foldl foldr
-    rw [← tail_ih]
-    rw [←temp2 g lcomm]
-    rw (occs :=[1]) [foldl]
-    rw [lcomm]
+
+
+
+    -- rw [← tail_ih]
+    -- rw [←temp2 g lcomm]
+    -- rw (occs :=[1]) [foldl]
+    -- rw [lcomm]
     -- unfold foldl
 
 
@@ -328,9 +331,11 @@ equal left and right folds, then that function must be left-commutative. -/
     (∀ (z : β) (xs : List α), foldl g z xs = foldr g z xs) →
     LeftCommutative g := by
   intro g z
-
-
-
+  unfold LeftCommutative
+  intro a a' b
+  have i := z b [a', a]
+  simp [foldl, foldr] at i
+  exact i
 
 /- ## Question (7 points): Heterogeneous Lists
 
@@ -551,8 +556,36 @@ would need to be able to assume about the argument to `hlistListToListHlist` in
 order to create a function that inverts the row-column representation as we
 desire. -/
 
+def hllh_helper : ∀ {αs : List Type}, (HList (columnwiseType αs)) → Option (HList αs × HList (columnwiseType αs))
+| t::ts, x:::xs =>
+  match x with
+  | [] => none
+  | y::ys => (hllh_helper xs).map <| fun (r, other) => (y:::r, ys:::other)
+| [], H[] => some (H[], H[])
+
+
+def hllh_helper_2 {αs : List Type} (n:ℕ) (hl: HList (columnwiseType αs)) : List (HList αs) :=
+match n with
+| 0 => []
+| .succ n =>
+match hllh_helper hl with
+| some (v, rest) => v:: hllh_helper_2 n rest
+| none => []
+
+def hllh : ∀ {αs : List Type}, (hl: HList (columnwiseType αs)) →  List (HList αs)
+| t::ts, x:::xs => hllh_helper_2 x.length (x:::xs)
+| [], _ => []
+
 /-
-Write your answer to part 5 here.
+If we use Option, we can create a function that extacts the largest prefix or rows where
+each column has a value. (see above)
+
+I must admit I had to add extra helpers to show termination for the outer
+recursion, but *technically* that's not a new LEAN feature :P
+
+In order to actually convert the table representations we would need to assert that
+all column lists have the same length. In HList the type parameter does that for
+us. We would need similar type-level length tracking (e.g. a vector).
 -/
 
 /- A final note! This is not the only possible encoding of a heterogeneous list.
@@ -577,6 +610,17 @@ type-checks?)
 We won't be grading your answers here, but if you'd like to share your thoughts,
 we're happy to read them! -/
 
+/-
+This HList version requires much less type-level proof and typing for us. We
+woldn't have to constantly match on the "αs". However we also lose the abilit to
+reason about the contents of the list. For example now even listHlistToHlistList
+wouldn't necessarilty create the same number of rows in the resulting table. We
+might be forced to drop rows if they don't have values for each column. Any time
+we would want to extact data from such a list we would have to dynamically check
+the type and we might get "none".
 
+In fact, unless we embed some dynamic proofs about which types the list stores,
+we will not be able to extract any data at all.
+-/
 
 end LoVe
