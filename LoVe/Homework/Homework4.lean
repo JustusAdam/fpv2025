@@ -271,33 +271,32 @@ def foldr {α β : Type} : (α → β → β) → β → List α → β
   | f, z, []        => z
   | f, z, (x :: xs) => f x (foldr f z xs)
 
-lemma temp {α β : Type} : ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (x : α) (xs : List α), foldr g z (x :: xs) = g x (foldr g z xs) := by
+lemma elem_from_foldl {α β : Type} : ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (x : α) (xs : List α), foldl g z (x :: xs) = g x (foldl g z xs) := by
   intro g hg z x xs
-  induction xs
-  rfl
-  rename_i head tail ih
-  unfold foldr
-  rw [hg, ←ih]
-  unfold foldr
-  rw [hg]
-  done
-
-lemma temp2 {α β : Type} : ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (x : α) (xs : List α), foldl g z (x :: xs) = g x (foldl g z xs) := by
-  intro g hg z x xs
-  induction xs
+  induction xs generalizing z
   rfl
   rename_i head tail ih
   unfold foldl
-  rw (occs := [1]) [foldl]
-  rw (occs:=[1]) [foldl] at ih
+  rw [← ih]
+  unfold foldl
+  rw [hg]
 
+lemma elem_from_foldl2 {α β : Type} : ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (x : α) (xs : List α), foldl g z (x :: xs) = g x (foldl g z xs) := by
+  intro g hg z x xs
+  induction xs generalizing z
+  rfl
+  rename_i head tail ih
+  unfold foldl
+  rw [← ih]
+  unfold foldl
+  rw [hg]
 
 @[autogradedProof 3] theorem foldl_eq_foldr_of_leftCommutative {α β : Type} :
   ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (xs : List α),
   foldl g z xs = foldr g z xs := by
   intro g lcomm z xs
   unfold foldl foldr
-  induction xs with
+  induction xs generalizing z with
   | nil => dsimp
   | cons head tail tail_ih =>
     simp
@@ -307,16 +306,10 @@ lemma temp2 {α β : Type} : ∀ (g : α → β → β) (hg : LeftCommutative g)
     rename_i head2 tail2
     dsimp at tail_ih
     unfold foldl foldr
-
-
-
-    -- rw [← tail_ih]
-    -- rw [←temp2 g lcomm]
-    -- rw (occs :=[1]) [foldl]
-    -- rw [lcomm]
-    -- unfold foldl
-
-
+    rw [← tail_ih]
+    rw [←elem_from_foldl g lcomm]
+    rw (occs :=[1]) [foldl]
+    rw [lcomm]
   done
 
 /- ### 2.4 (1 point).
