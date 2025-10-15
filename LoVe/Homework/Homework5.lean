@@ -26,6 +26,8 @@ Lean definition below. The definition should distinguish two cases, like `Even`,
 and should not rely on `Even`. -/
 
 inductive Odd : ℕ → Prop
+  | one : Odd 1
+  | add_two (k : ℕ) : Odd k → Odd (k + 2)
 -- supply the missing cases here
 
 /- ### 1.2 (1 point).
@@ -35,19 +37,24 @@ your answer to question 2.1. -/
 
 @[autogradedProof 0.5] theorem Odd_3 :
   Odd 3 :=
-  sorry
+  Odd.one.add_two
 
 @[autogradedProof 0.5] theorem Odd_5 :
   Odd 5 :=
-  sorry
+  Odd_3.add_two
 
 /- ### 1.3 (1 point).
 
 Prove the following theorem by rule induction: -/
 
 @[autogradedProof 1] theorem Even_Odd {n : ℕ} (heven : Even n) :
-  Odd (n + 1) :=
-  sorry
+  Odd (n + 1) := by
+  induction heven with
+  | zero => exact Odd.one
+  | add_two k a ih =>
+    exact ih.add_two
+    done
+
 
 /- ### 1.4 (1 point).
 
@@ -56,8 +63,15 @@ Prove the following theorem using rule induction.
 Hint: Recall that `¬ a` is defined as `a → false`. -/
 
 @[autogradedProof 1] theorem Even_Not_Odd {n : ℕ} (heven : Even n) :
-  ¬ Odd n :=
-  sorry
+  ¬ Odd n := by
+  intro o
+  induction o with
+  | one => contradiction
+  | add_two k o ih =>
+    cases heven with
+    | add_two _ e =>
+    exact ih e
+  done
 
 infixl:50 " <+ " => List.Sublist
 
@@ -107,6 +121,8 @@ the `List` constructors in your solution. (Of note, this means that
 
 -- Fill this in:
 inductive IsIn {α : Type} : α → List α → Prop
+| search (x : α) (xs : List α) : IsIn x xs → IsIn x (x::xs)
+| found (x : α) (xs : List α) : IsIn x (x :: xs)
 
 
 -- For the rest of this problem, we'll redefine the `∈` and `∉` notation to use
@@ -136,6 +152,8 @@ Hint: you may find the `IsIn` (`∈`) predicate you defined above useful! -/
 
 -- Fill this in:
 inductive NoDuplicates {α : Type} : List α → Prop
+| empty : NoDuplicates []
+| cons (x:α) (xs: List α): (x ∉ xs) → NoDuplicates (x::xs)
 
 
 /- ### 2.3 (2 points).
@@ -158,8 +176,19 @@ axiom not_in_of_not_in_sublist {α : Type} {x : α} {xs ys : List α} :
 
 @[autogradedProof 2]
 theorem noDuplicates_sublist_of_noDuplicates {α : Type} (xs ys : List α) :
-  NoDuplicates ys → xs <+ ys → NoDuplicates xs :=
-  sorry
+  NoDuplicates ys → xs <+ ys → NoDuplicates xs := by
+  intro no_dup_ys x_sub_ys
+  induction ys
+
+  -- exact NoDuplicates.empty
+  -- rename_i x xs ih
+  -- apply NoDuplicates.cons
+  -- have helper2: xs <+ ys := sorry
+  -- have helper3 : x ∉ ys := by
+
+  --   done
+  -- exact not_in_of_not_in_sublist helper2 helper3
+  done
 
 end NoDupSublists
 
@@ -361,7 +390,7 @@ the case.
 
 Hint: if you're having trouble, try actually doing the proof using
 `foldl_oneplace_invariant` (use `length_appendToAll` as a guide) and see where
-it goes wrong. (Make sure to comment out any scratch work before submitting.) -/ 
+it goes wrong. (Make sure to comment out any scratch work before submitting.) -/
 
 /-
 Write your answer to part 4 here
