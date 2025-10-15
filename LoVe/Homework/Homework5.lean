@@ -153,7 +153,7 @@ Hint: you may find the `IsIn` (`∈`) predicate you defined above useful! -/
 -- Fill this in:
 inductive NoDuplicates {α : Type} : List α → Prop
 | empty : NoDuplicates []
-| cons (x:α) (xs: List α): (x ∉ xs) → NoDuplicates (x::xs)
+| cons (x:α) (xs: List α): (x ∉ xs) → NoDuplicates xs → NoDuplicates (x::xs)
 
 
 /- ### 2.3 (2 points).
@@ -174,20 +174,27 @@ inducting on, you may need to generalize your induction over that variable. -/
 axiom not_in_of_not_in_sublist {α : Type} {x : α} {xs ys : List α} :
   xs <+ ys → x ∉ ys → x ∉ xs
 
+lemma sublist_of_const {α : Type} {x: α} {xs ys : List α} :
+  x::xs <+ ys → xs <+ ys := sorry
+
 @[autogradedProof 2]
 theorem noDuplicates_sublist_of_noDuplicates {α : Type} (xs ys : List α) :
   NoDuplicates ys → xs <+ ys → NoDuplicates xs := by
   intro no_dup_ys x_sub_ys
-  induction ys
+  induction no_dup_ys
+  cases xs
+  exact NoDuplicates.empty
+  contradiction
+  rename_i y' ys' h_y_mem no_dup_ys ih
+  cases xs
+  exact NoDuplicates.empty
+  rename_i x' xs'
+  apply NoDuplicates.cons
 
-  -- exact NoDuplicates.empty
-  -- rename_i x xs ih
-  -- apply NoDuplicates.cons
-  -- have helper2: xs <+ ys := sorry
-  -- have helper3 : x ∉ ys := by
-
-  --   done
-  -- exact not_in_of_not_in_sublist helper2 helper3
+  assumption
+  have nd_xxs : NoDuplicates (x' :: xs') := sorry
+  cases nd_xxs
+  assumption
   done
 
 end NoDupSublists
