@@ -518,26 +518,21 @@ value of type `τ x` is expected. -/
 
 @[autogradedProof 2] theorem length_fold_reverse {α} :
   ∀ (xs : List α), List.length xs = List.length (fold_reverse xs) :=
-λ (xs : List α) => by
-  have h : (List.foldl (fun acc x => x :: acc) [] xs).length = xs.length :=
-    foldl_twoplace_invariant
-      (fun (x: List _) acc => x.length + acc.length = xs.length)
-      (λ acc x => x :: acc)
-      []
-      xs
-      (by
-        dsimp
-        linarith)
-      (by
-        intro x z xs
-        dsimp
-        intro h
-        linarith
-      )
-  unfold fold_reverse
-  apply Eq.symm
-  exact h
-  done
+λ (xs : List α) =>
+  foldl_twoplace_invariant
+    (fun (x: List _) acc => xs.length  = x.length + acc.length)
+    (λ acc x => x :: acc)
+    []
+    xs
+    (by
+      dsimp
+      linarith)
+    (by
+      intro x z xs
+      dsimp
+      intro h
+      linarith
+    )
 
 
 
