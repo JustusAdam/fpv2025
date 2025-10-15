@@ -174,27 +174,46 @@ inducting on, you may need to generalize your induction over that variable. -/
 axiom not_in_of_not_in_sublist {α : Type} {x : α} {xs ys : List α} :
   xs <+ ys → x ∉ ys → x ∉ xs
 
-lemma sublist_of_const {α : Type} {x: α} {xs ys : List α} :
-  x::xs <+ ys → xs <+ ys := sorry
+lemma elem_not_in_dedup_sublist {α : Type} {x : α} {xs ys : List α} :
+  x::xs <+ ys → NoDuplicates ys → x ∉ xs := by
+  intro sub dup
+  induction dup with
+  | empty => contradiction
+  | cons y ys' n_in n_dup ih =>
+    cases sub
+    apply ih
+    assumption
+    rename_i sub2
+    apply not_in_of_not_in_sublist sub2 n_in
+  done
+
+
+lemma cons_is_sublist {α : Type} {x : α } {xs ys : List α } :
+  x::xs <+ ys → xs <+ ys := by
+  intro sub
+  cases sub with
+  | cons y ysub =>
+    rename_i l2
+    constructor
+    apply cons_is_sublist
+    assumption
+    done
+  | cons₂ =>
+    constructor
+    assumption
+  done
 
 @[autogradedProof 2]
 theorem noDuplicates_sublist_of_noDuplicates {α : Type} (xs ys : List α) :
   NoDuplicates ys → xs <+ ys → NoDuplicates xs := by
   intro no_dup_ys x_sub_ys
-  induction no_dup_ys
-  cases xs
-  exact NoDuplicates.empty
-  contradiction
-  rename_i y' ys' h_y_mem no_dup_ys ih
-  cases xs
-  exact NoDuplicates.empty
-  rename_i x' xs'
-  apply NoDuplicates.cons
-
-  assumption
-  have nd_xxs : NoDuplicates (x' :: xs') := sorry
-  cases nd_xxs
-  assumption
+  induction xs with
+  | nil => constructor
+  | cons x xs ih =>
+    constructor
+    apply elem_not_in_dedup_sublist x_sub_ys no_dup_ys
+    apply ih
+    apply cons_is_sublist x_sub_ys
   done
 
 end NoDupSublists
@@ -266,12 +285,22 @@ by
   intros xs ys
   induction ys with
   | nil =>
-    sorry
+    unfold appendToAll List.foldl
+    rfl
+    done
   | cons y ys ih =>
+    unfold appendToAll
+    unfold appendToAll at ih
+    unfold List.foldl
+
+    rewrite (occs:= [1]) [List.map.eq_def]
     sorry
 
 /-
 WRITE YOUR ANSWER TO PART 1 HERE
+
+It seems we need to somehow lift the computation to the length domain with some
+understanding of how the accumulator's length changes with each unfolding of foldl.
 -/
 
 /-! In this problem, we'll explore another approach to proving properties of
@@ -344,8 +373,25 @@ recursion!) -/
   ∀ (P : α → Prop) (f : α → β → α) (z : α) (xs : List β)
     (hinit : P z)
     (hpres : ∀ (acc : α) (x : β), P acc → P (f acc x)),
-    P (List.foldl f z xs) :=
-sorry
+    P (List.foldl f z xs) := by
+  intro p f z xs h_pz h_pres
+  unfold List.foldl
+  cases xs with
+  | nil => simp ; exact h_pz
+  | cons x xs =>
+    simp
+    apply foldl_oneplace_invariant
+    exact h_pres z x h_pz
+    assumption
+
+theorem foldl_oneplace_invariant_term {α β}
+  (P : α → Prop) (f : α → β → α) (z : α) (xs : List β)
+    (hinit : P z)
+    (hpres : ∀ (acc : α) (x : β), P acc → P (f acc x))
+    : P (List.foldl f z xs) :=
+  match xs with
+  | [] => hinit
+  | x :: xs => foldl_oneplace_invariant_term P f (f z x) xs (hpres z x hinit) hpres
 
 /- ### 3.3 (2 points).
 
@@ -366,14 +412,21 @@ the lemma `List.length_map` useful.) -/
 theorem length_appendToAll : ∀ (xs ys : List String),
   List.length xs = List.length (appendToAll xs ys) :=
 λ xs ys => foldl_oneplace_invariant
-  sorry
-  sorry
-  sorry
-  sorry
+  (fun (l: List _) => xs.length = l.length)
+  (λ acc y => List.map (λ x => x ++ y) acc)
+  xs
+  ys
+  (by rfl)
   (by
-     sorry)
-  (by
-     sorry)
+    intro acc x
+    dsimp
+    intro pres
+    rw [List.length_map]
+    assumption
+  )
+
+
+
 
 /- While `foldl_oneplace_invariant` is useful, it's not quite powerful enough
 to prove the invariance of certain properties we might care about. We'll explore
@@ -401,6 +454,12 @@ it goes wrong. (Make sure to comment out any scratch work before submitting.) -/
 
 /-
 Write your answer to part 4 here
+
+Simple. The whole point of the invariant lemma is that the property we want to
+prove stays the same at each step of the fold. However if we're reversing a list
+we care about the length of the accumulator, which has to change in the reverse
+function, since we start from an empty list and expect a list of length same to
+`xs` at the end.
 -/
 
 /- To prove the desired property of `fold_reverse`, we'll need a more
@@ -422,13 +481,17 @@ a predicate of this form, we'll need to modify both of our proof steps:
 
 We have stated this proof technique below. Prove its correctness. -/
 
-@[autogradedProof 1] theorem foldl_twoplace_invariant {α β} :
-  ∀ (P : α → List β → Prop) (f : α → β → α) (z : α) (xs : List β)
+@[autogradedProof 1] theorem foldl_twoplace_invariant {α β}
+  (P : α → List β → Prop) (f : α → β → α) (z : α) (xs : List β)
     (hinit : P z xs)
     (hpres : ∀ (acc : α) (x : β) (xs' : List β),
-               P acc (x :: xs') → P (f acc x) xs'),
+               P acc (x :: xs') → P (f acc x) xs') :
     P (List.foldl f z xs) [] :=
-sorry
+  match xs with
+  | [] => hinit
+  | x::xs =>
+    foldl_twoplace_invariant
+      P f (f z x) xs (hpres z x xs hinit) hpres
 
 /- ### 3.6 (2 points).
 
@@ -455,14 +518,27 @@ value of type `τ x` is expected. -/
 
 @[autogradedProof 2] theorem length_fold_reverse {α} :
   ∀ (xs : List α), List.length xs = List.length (fold_reverse xs) :=
-λ (xs : List α) =>
-  foldl_twoplace_invariant
-    sorry
-    sorry
-    sorry
-    sorry
-    (by sorry)
-    (by sorry)
+λ (xs : List α) => by
+  have h : (List.foldl (fun acc x => x :: acc) [] xs).length = xs.length :=
+    foldl_twoplace_invariant
+      (fun (x: List _) acc => x.length + acc.length = xs.length)
+      (λ acc x => x :: acc)
+      []
+      xs
+      (by
+        dsimp
+        linarith)
+      (by
+        intro x z xs
+        dsimp
+        intro h
+        linarith
+      )
+  unfold fold_reverse
+  apply Eq.symm
+  exact h
+  done
+
 
 
 
