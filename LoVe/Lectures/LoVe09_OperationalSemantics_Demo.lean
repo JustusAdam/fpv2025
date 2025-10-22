@@ -255,6 +255,9 @@ theorem BigStep_terminates {S s} :
 :=
   sorry   -- unprovable
 
+
+
+
 /- We can define inversion rules about the big-step semantics: -/
 
 @[simp] theorem BigStep_skip_Iff {s t} :
@@ -452,6 +455,9 @@ theorem sillyLoop_from_1_SmallStep :
   (Stmt.skip, (fun _ ↦ 0)) :=
   by
     rw [sillyLoop]
+    -- iterate 2 (constructor <;> try simp)
+
+
     apply RTC.head
     { apply SmallStep.whileDo }
     { apply RTC.head
@@ -503,19 +509,21 @@ theorem SmallStep_final (S s) :
       cases hstep
     | assign x a =>
       simp
-      apply Exists.intro Stmt.skip
-      apply Exists.intro (s[x ↦ a s])
-      apply SmallStep.assign
+      refine ⟨_, _, SmallStep.assign ..⟩
+      -- existsi ?_, ?_
+      -- rotate_left 2
+      -- apply SmallStep.assign
+      -- apply Exists.intro Stmt.skip
+      -- apply Exists.intro (s[x ↦ a s])
+      -- apply SmallStep.assign
     | seq S T ihS ihT =>
       simp
-      cases Classical.em (S = Stmt.skip) with
-      | inl h =>
-        rw [h]
+      by_cases h : S = Stmt.skip
+      . rw [h]
         apply Exists.intro T
         apply Exists.intro s
         apply SmallStep.seq_skip
-      | inr h =>
-        simp [h] at ihS
+      . simp [h] at ihS
         cases ihS with
         | intro S' hS₀ =>
           cases hS₀ with
@@ -526,14 +534,12 @@ theorem SmallStep_final (S s) :
             assumption
     | ifThenElse B S T ihS ihT =>
       simp
-      cases Classical.em (B s) with
-      | inl h =>
-        apply Exists.intro S
+      by_cases h : B s
+      . apply Exists.intro S
         apply Exists.intro s
         apply SmallStep.if_true
         assumption
-      | inr h =>
-        apply Exists.intro T
+      . apply Exists.intro T
         apply Exists.intro s
         apply SmallStep.if_false
         assumption
@@ -750,10 +756,12 @@ of `WHILE` programs on a single state. -/
 inductive parStep : ℕ → (List Stmt × State) → (List Stmt × State) → Prop
 | intro {Ss Ss' P P' st st' i}
   (hi : i < Ss.length)
-  (hs : (P, st) ⇒ (P', st')): 
+  (hiS : P = Ss.get ⟨i, hi⟩)
+  (hs : (P, st) ⇒ (P', st'))
+  (hS' : Ss' = Ss.set i P') :
     parStep i (Ss, st) (Ss', st')
 
-/- There's a diamond property we'd like to be true. 
+/- There's a diamond property we'd like to be true.
 What does this mean? -/
 
 lemma parStepDiamond {i j Ss Ts Ts' s t t'}
@@ -762,10 +770,50 @@ lemma parStepDiamond {i j Ss Ts Ts' s t t'}
   (hij : i ≠ j)
   (hT : parStep i (Ss, s) (Ts, t))
   (hT' : parStep j (Ss, s) (Ts', (t'))) :
-    ∃ u Us, parStep j (Ts, t) (Us, u) ∧ 
+    ∃ u Us, parStep j (Ts, t) (Us, u) ∧
             parStep i (Ts', t') (Us, u) :=
 sorry
 
+
 /- Can we prove it? Can we fix it? -/
+
+
+
+
+/-- Returns the set of variables written to by a program -/
+def Stmt.W : Stmt → Set String
+| skip => ∅
+| whileDo _ S => S.W
+| ifThenElse _ T E => T.W ∪ E.W
+| seq S T => S.W ∪ T.W
+| assign x _ => {x}
+
+/-- Returns the set of variables read by a boolean or arithmetic expression -/
+def exp.R {α : Type} (f : State → α) : Set String :=
+{ x | ∃ s n, f (s[x ↦ n]) ≠ f s}
+
+/-- Returns the set of variables read by a program -/
+def Stmt.R : Stmt → Set String
+| skip => ∅
+| whileDo b S => exp.R b ∪ S.R
+| ifThenElse b T E => exp.R b ∪ T.R ∪ E.R
+| seq S T => S.R ∪ T.R
+| assign _ a => exp.R a
+
+/-- Returns the set of variables written to or read by a program -/
+def Stmt.V (S : Stmt) : Set String := S.W ∪ S.R
+
+
+lemma parStepDiamondFixed {i j Ss Ts Ts' s t t'}
+  (hi : i < Ss.length)
+  (hj : j < Ts.length)
+  (hij : i ≠ j)
+  (hT : parStep i (Ss, s) (Ts, t))
+  (hT' : parStep j (Ss, s) (Ts', t'))
+  (hWV : (Ss.get ⟨i, hi⟩).W ∩ (Ts.get ⟨j, hj⟩).V = ∅)
+  (hVW : (Ss.get ⟨i, hi⟩).V ∩ (Ts.get ⟨j, hj⟩).W = ∅) :
+    ∃ u Us, parStep j (Ts, t) (Us, u) ∧
+            parStep i (Ts', t') (Us, u) :=
+sorry
 
 end LoVe

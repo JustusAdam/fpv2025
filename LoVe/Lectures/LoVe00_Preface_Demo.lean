@@ -129,7 +129,42 @@ Lean is our vehicle, not an end in itself.
 
 -/
 
+
 open Nat
+#eval minFac 11
+
+
+theorem infinitude_of_primes : ∀ N, ∃ p ≥ N, Nat.Prime p := by
+  intro N
+
+  let F := N ! + 1
+  let q := minFac F
+  use q
+
+  have qPrime : Nat.Prime q := sorry
+
+  apply And.intro
+
+  { by_contra hqN
+    have h1 : q ∣ N ! + 1 := by exact minFac_dvd F
+    have h2 : q > 0 := by exact minFac_pos F
+    have h3 : q ∣ N ! := by refine dvd_factorial h2 (by linarith)
+    have h4 : q ∣ 1 := by exact (Nat.dvd_add_iff_right h3).mpr h1
+    have h5 : ¬ q ∣ 1 := by exact Nat.Prime.not_dvd_one qPrime
+    contradiction }
+  { assumption }
+
+  done
+
+
+
+
+
+
+
+
+
+
 
 -- here's a proof that there are infinitely many primes, as a mathematical theorem
 

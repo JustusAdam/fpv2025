@@ -1,4 +1,6 @@
 import LoVe.Lectures.LoVe01_02_TypesAndTerms_Demo
+import Mathlib.Tactic.CC
+
 namespace LoVe
 namespace ForwardProofs
 
