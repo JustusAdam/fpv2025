@@ -39,26 +39,63 @@ The `repeat n S` statement executes `S` exactly `n` times. Thus, `repeat 5 S`
 has the same effect as `S; S; S; S; S` (as far as the big-step semantics is
 concerned), and `repeat 0 S` has the same effect as `skip`. -/
 
-/- ### 1.1 (2 points). 
+/- ### 1.1 (2 points).
 
 Complete the following definition of a big-step semantics: -/
+
+#print State
 
 inductive BigStep : Stmt × State → State → Prop
   | skip (s) :
     BigStep (Stmt.skip, s) s
--- enter the missing cases here
+  | assign (x a s) :
+    BigStep (Stmt.assign x a, s) (s[x ↦ a s])
+  | seq (S T s t u) (hS : BigStep (S, s) t)
+      (hT : BigStep (T, t) u) :
+    BigStep (S; T, s) u
+  | unlessDo_true (S b s) (hf: b s) : BigStep (Stmt.unlessDo b S, s) s
+  | unlessDo_false (S s s' b) (hS : BigStep (S, s) s') (ht : ¬ b s)
+    : BigStep (Stmt.unlessDo b S, s) s'
+  | repeat_zero (S s) : BigStep (Stmt.repeat 0 S, s) s
+  | repeat_succ (S s s' s'' n)
+    (h_next: BigStep (S, s) s')
+    (h_rest: BigStep (Stmt.repeat n S, s') s'')
+    : BigStep (Stmt.repeat (n + 1) S, s) s''
 
 infix:110 " ⟹ " => BigStep
 
-/- ### 1.2 (1 point). 
+/- ### 1.2 (1 point).
 Prove the following inversion rule for the big-step semantics of `unless`. -/
 
 @[autogradedProof 1]
 theorem BigStep_ite_iff {B S s t} :
-  (Stmt.unlessDo B S, s) ⟹ t ↔ (B s ∧ s = t) ∨ (¬ B s ∧ (S, s) ⟹ t) :=
-  sorry
+  (Stmt.unlessDo B S, s) ⟹ t ↔ (B s ∧ s = t) ∨ (¬ B s ∧ (S, s) ⟹ t) := by
+  apply Iff.intro
+  pick_goal 2
+  intro eq
+  by_cases h: (B s)
+  simp [h] at eq
+  rw [eq]
+  constructor
+  rw [← eq]
+  assumption
+  constructor
+  simp [h] at eq
+  assumption
+  assumption
+  intro step
+  by_cases h : (B s)
+  simp [h]
+  cases step
+  rfl
+  contradiction
+  simp [h]
+  cases step
+  contradiction
+  assumption
+  done
 
-/- ### 1.3 (2 points). 
+/- ### 1.3 (2 points).
 
 Prove the following inversion rule for the big-step semantics of `repeat`. -/
 
@@ -66,8 +103,40 @@ Prove the following inversion rule for the big-step semantics of `repeat`. -/
 theorem BigStep_repeat_iff {n S s u} :
   (Stmt.repeat n S, s) ⟹ u ↔
   (n = 0 ∧ u = s)
-  ∨ (∃m t, n = m + 1 ∧ (S, s) ⟹ t ∧ (Stmt.repeat m S, t) ⟹ u) :=
-  sorry
+  ∨ (∃m t, n = m + 1 ∧ (S, s) ⟹ t ∧ (Stmt.repeat m S, t) ⟹ u) :=  by
+  apply Iff.intro
+  intro step
+  cases n with
+  | zero =>
+    simp
+    cases step
+    rfl
+  | succ n =>
+    simp
+    cases step
+    rename_i s' h_rest h_next
+    constructor
+    swap
+    exact s'
+    apply And.intro
+    assumption
+    assumption
+  intro ex
+  cases n with
+  | zero =>
+    simp at ex
+    rw [ex]
+    constructor
+  | succ n =>
+    simp at ex
+    apply ex.elim
+    intro s' h
+    constructor
+    pick_goal 3
+    exact s'
+    exact h.left
+    exact h.right
+  done
 
 end Repeat
 
@@ -156,7 +225,21 @@ judgments are those specified by `HasType`.
 Here are some useful ASCII symbols: `–`, `⊢`. -/
 
 /-
-Write your response for part 1 here.
+
+------------ Arg
+C ⊢ arg ∶ arg
+
+C ⊢ fn0 ∶ fn 0    C ⊢ arg ∶ arg
+-------------------------------- appZero
+C ⊢ fn0 arg ∶ arg
+
+C ⊢ fn3 ∶ fn 3    C ⊢ arg ∶ arg
+----------------------------------- appSucc
+C ⊢ fn3 arg ∶ fn 2
+
+C ⊢ fn3 arg ∶ fn 2    C ⊢ fn0 arg ∶ arg
+------------------------------------------ appSucc
+C ⊢ (fn3 arg) (fn0 arg) ∶ fn 1
 -/
 
 /- ### 2.2 (1 point).
@@ -169,9 +252,14 @@ Note: there are tactics that will make this proof trivial. To get the most out
 of it, though, you should try writing the specific terms, either using `apply`
 or as a forward proof! -/
 
+open HasType
+
 @[autogradedProof 1]
-theorem tp_exercise : app (app (fn 3) arg) (app (fn 0) arg) ∶ sorry :=
-  sorry
+theorem tp_exercise : app (app (fn 3) arg) (app (fn 0) arg) ∶ function 1 :=
+  -- Since you hinted I wanted to make sure I know what the trivial way is :P
+  -- by repeat constructor
+  appSucc (appSucc HasType.fn HasType.arg) <|
+    appZero HasType.fn HasType.arg
 
 /- Next, we define our language's dynamics. Because we are defining a functional
 language, our small-step semantics specifies transitions between *expressions*,
@@ -227,8 +315,33 @@ Hint: We recommend proceeding by rule induction on the step judgment. -/
 
 @[autogradedProof 2]
 theorem preservation {e e' : FnExp} {τ : FnType} :
-  e ∶ τ → e ⇒ e' → e' ∶ τ :=
-  sorry
+  e ∶ τ → e ⇒ e' → e' ∶ τ := by
+  intro has_ty steps
+  induction steps generalizing τ with
+  | appZero =>
+    rename_i x
+    cases has_ty
+    assumption
+    contradiction
+  | appArg prev ih =>
+    rename_i e₂ e₂' x
+    cases has_ty with
+    | appZero tf ta => exact appZero (ih tf) ta
+    | appSucc tf ta =>
+      rename_i n
+      exact appSucc (ih tf) ta
+      done
+  | appSucc =>
+    rename_i x n
+    cases has_ty with
+    | appZero tf ta =>
+      contradiction
+      done
+    | appSucc tf ta =>
+      rename_i n₂
+      cases tf
+      constructor
+  done
 
 /- Lastly, we prove progress. In order to do so, we need to define what a
 "fully-evaluated expression" is in our language. For this purpose, we define a
@@ -247,8 +360,62 @@ inductive Value : FnExp → Prop
 
 @[autogradedProof 2]
 theorem progress {e : FnExp} {τ : FnType} :
-  e ∶ τ → Value e ∨ ∃ e', e ⇒ e' :=
-  sorry
+  e ∶ τ → Value e ∨ ∃ e', e ⇒ e' := by
+  intro has_ty
+  induction e generalizing τ with
+  | fn n => exact Or.inl Value.fn
+  | arg => exact Or.inl Value.arg
+  | app e₁ e₂ ih₁ ih₂ =>
+    apply Or.inr
+    cases has_ty with
+    | appZero tf tx =>
+      cases e₁ with
+      | fn =>
+        cases tf
+        exact Exists.intro e₂ Step.appZero
+      | arg => contradiction
+      | app =>
+        have h : _ := (ih₁ tf).resolve_left (by
+          apply Not.intro
+          intro h
+          cases h
+          done)
+        cases h with
+        | intro elem p =>
+          apply Exists.intro
+          constructor
+          exact p
+        done
+      done
+    | appSucc f x =>
+      cases e₁ with
+      | arg => contradiction
+      | fn =>
+        rename_i n₁
+        cases n₁ with
+        | zero =>
+          apply Exists.intro
+          swap
+          exact e₂
+          constructor
+          done
+        | succ n₁ =>
+          constructor
+          apply Step.appSucc
+          done
+      | app =>
+        have h := (ih₁ f).resolve_left (by
+          apply Not.intro
+          intro h
+          cases h
+        )
+        cases h
+        rename_i  w h
+        constructor
+        apply Step.appArg
+        exact h
+      done
+  done
 
 /- ### 2.5 (3 points).
 
@@ -260,7 +427,32 @@ inductive BadStep : FnExp → FnExp → Prop
   | app_zero {x}   : BadStep (app (fn 0) x) x
   | app_succ {x n} : BadStep (app (fn (Nat.succ n)) x) (fn n)
 
-theorem negation_of_coherence_property : sorry := sorry
+theorem negation_of_coherence_property : ∃ (e : FnExp) (τ : FnType),
+  ¬(e ∶ τ → Value e ∨ ∃ e', BadStep e e') := by
+  let prog := app (app (fn 1) arg) arg
+  apply Exists.intro
+  swap
+  exact prog
+  apply Exists.intro
+  swap
+  exact argument
+  apply Not.intro
+  intro h
+  have t_prog : prog ∶ FnType.argument := by
+    unfold prog
+    repeat constructor
+  have prop := (h t_prog).resolve_left (by
+    apply Not.intro
+    intro h
+    unfold prog at h
+    cases h
+  )
+  apply prop.elim
+  intro a step
+  unfold prog at step
+  cases step
+  done
+
 
 end FnExp
 
