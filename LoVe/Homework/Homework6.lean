@@ -535,15 +535,26 @@ by
 Prove that progress fails to hold. -/
 
 @[autogradedProof 0.5]
-theorem no_prog : ¬(∀ {e τ}, (e ∶ τ) → Value e ∨ ∃ e', e ⇒ e') :=
-sorry
+theorem no_prog : ¬(∀ {e τ}, (e ∶ τ) → Value e ∨ ∃ e', e ⇒ e') := by
+  intro h
+  have exp : projl zero ∶ projl zero := by apply typing_is_identity
+  have p := h exp
+  have p₀ := p.resolve_left <| by intro x; cases x
+  apply p₀.elim
+  intro w p
+  cases p
+  rename_i e
+  cases e
 
 /- ### 3.2 (0.5 bonus point).
 Prove that preservation fails to hold. -/
 
 @[autogradedProof 0.5]
-theorem no_pres : ¬(∀ {e e' τ}, e ∶ τ → e ⇒ e' → e' ∶ τ) :=
-sorry
+theorem no_pres : ¬(∀ {e e' τ}, e ∶ τ → e ⇒ e' → e' ∶ τ) := by
+  intro h
+  have exp : (projl (tuple zero zero)) ∶ (projl (tuple zero zero)) := by repeat constructor
+  have p := h exp (by repeat constructor)
+  cases p
 
 end FPExp
 end LoVe
