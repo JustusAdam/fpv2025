@@ -32,16 +32,20 @@ theorems below all take `[BEq α]` as type class argument. -/
 
 Provide the missing proof below. -/
 
-instance Multiset.Setoid (α : Type) [BEq α] : Setoid (List α) :=
-{ r     := fun as bs ↦ ∀x, List.count x as = List.count x bs
+instance Multiset.Setoid (α : Type) [BEq α] : Setoid (List α) where
+  r     := fun as bs ↦ ∀x, List.count x as = List.count x bs
   iseqv :=
-    { refl  :=
-        sorry
-      symm  :=
-        sorry
-      trans :=
-        sorry
-    } }
+    { refl  := by
+        intros
+        rfl
+      symm  := by
+        intros xs ys hc x
+        symm
+        exact hc x
+      trans := by
+        intros xs ys zs h1 h2 x
+        exact Eq.trans (h1 x) (h2 x)
+    }
 
 /- We can now define the type of multisets as the quotient over the
 relation `Multiset.Setoid`. -/
@@ -64,15 +68,24 @@ def Multiset.mk {α : Type} [BEq α] : List α → Multiset α :=
   Quotient.mk (Multiset.Setoid α)
 
 def Multiset.empty {α : Type} [BEq α] : Multiset α :=
-  sorry
+  ⟦[]⟧
 
 def Multiset.singleton {α : Type} [BEq α] (a : α) : Multiset α :=
-  sorry
+  ⟦[a]⟧
 
 def Multiset.union {α : Type} [BEq α] : Multiset α → Multiset α → Multiset α :=
   Quotient.lift₂
-  sorry
-  sorry
+  (fun xs ys => ⟦xs ++ ys⟧)
+  (by
+    intros as1 bs1 as2 bs2 hea heb
+    dsimp
+    apply Quotient.sound
+    intro x
+    have hca := hea x
+    have hcb := heb x
+    rw [List.count_append, List.count_append]
+    rw [hca, hcb]
+  )
 
 /- ### 1.3 (4 points).
 
@@ -81,8 +94,8 @@ and has `Multiset.empty` as identity element. -/
 
 @[autogradedProof 1]
 theorem Multiset.union_comm {α : Type} [BEq α] (A B : Multiset α) :
-  Multiset.union A B = Multiset.union B A :=
-  sorry
+  Multiset.union A B = Multiset.union B A := by
+    sorry
 
 @[autogradedProof 1]
 theorem Multiset.union_assoc {α : Type} [BEq α] (A B C : Multiset α) :
