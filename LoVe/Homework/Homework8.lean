@@ -81,10 +81,8 @@ def Multiset.union {α : Type} [BEq α] : Multiset α → Multiset α → Multis
     dsimp
     apply Quotient.sound
     intro x
-    have hca := hea x
-    have hcb := heb x
     rw [List.count_append, List.count_append]
-    rw [hca, hcb]
+    rw [hea x, heb x]
   )
 
 /- ### 1.3 (4 points).
@@ -95,23 +93,36 @@ and has `Multiset.empty` as identity element. -/
 @[autogradedProof 1]
 theorem Multiset.union_comm {α : Type} [BEq α] (A B : Multiset α) :
   Multiset.union A B = Multiset.union B A := by
-    sorry
+    apply A.ind
+    apply B.ind
+    intros as bs
+    unfold Multiset.union
+    simp only [Quotient.lift_mk]
+    apply Quotient.sound
+    intro x
+    rw [List.count_append, List.count_append]
+    rw [add_comm]
 
 @[autogradedProof 1]
 theorem Multiset.union_assoc {α : Type} [BEq α] (A B C : Multiset α) :
   Multiset.union (Multiset.union A B) C =
-  Multiset.union A (Multiset.union B C) :=
-  sorry
+  Multiset.union A (Multiset.union B C) := by
+    apply A.ind ; apply B.ind ; apply C.ind
+    intros as bs cs
+    simp [Multiset.union]
 
 @[autogradedProof 1]
 theorem Multiset.union_iden_left {α : Type} [BEq α] (A : Multiset α) :
-  Multiset.union Multiset.empty A = A :=
-  sorry
+  Multiset.union Multiset.empty A = A := by
+    unfold empty union
+    apply A.ind
+    simp
 
 @[autogradedProof 1]
 theorem Multiset.union_iden_right {α : Type} [BEq α] (A : Multiset α) :
-  Multiset.union A Multiset.empty = A :=
-  sorry
+  Multiset.union A Multiset.empty = A := by
+    rw [union_comm]
+    exact union_iden_left _
 
 /- ## Question 2 (3 points + 1 bonus point): Strict Positivity
 
@@ -160,8 +171,10 @@ unsafe inductive Self (α : Type) : Type
 Complete the definition below that produces a value of type
 `Empty` given a value of type `Self Empty`. -/
 
-@[autogradedProof 1] unsafe def empty_of_self_empty : Self Empty → Empty
-  := sorry
+@[autogradedProof 1] unsafe def empty_of_self_empty (self : Self Empty) : Empty :=
+  match self with
+  | .mk f => f self
+
 
 /- ### 2.2 (1 point).
 
@@ -174,8 +187,7 @@ For an example of what is *not* allowed, try
 
 -/
 
-@[autogradedProof 1] unsafe def self_empty : Self Empty :=
-  sorry
+@[autogradedProof 1] unsafe def self_empty : Self Empty := Self.mk empty_of_self_empty
 
 /- ### 2.3 (1 point).
 
@@ -183,8 +195,8 @@ Use the preceding declarations to prove `False`.
 
 Hint: recall `Empty.elim`. -/
 
-@[autogradedProof 1] unsafe def uh_oh : False :=
-  sorry
+@[autogradedProof 1] unsafe def uh_oh : False := (empty_of_self_empty self_empty).elim
+
 
 /- ### 2.4 (1 bonus point).
 
@@ -290,8 +302,12 @@ where `x ≈ y` if and only if `x` and `y` are both even or both odd.
 E.g. `0 ≈ 2`, `1 ≈ 5`, but `¬ 4 ≈ 5`. -/
 
 instance eqv : Setoid ℕ := {
-  r := sorry,
-  iseqv := sorry
+  r x y := Even x ↔ Even y,
+  iseqv := {
+    refl := by intros ; rfl
+    symm := by intros ; symm ; assumption
+    trans := by intros ; trans <;> assumption
+  }
 }
 
 /- Now we'll define the quotient of ℕ by this relation. There are two elements
@@ -307,8 +323,23 @@ def o : EONat := ⟦1⟧
 Prove that these are the only two elements of `EONat`. -/
 
 @[autogradedProof 2]
-lemma e_or_o (x : EONat) : x = e ∨ x = o :=
-  sorry
+lemma e_or_o (x : EONat) : x = e ∨ x = o := by
+  unfold EONat at x
+  apply x.ind
+  intro a
+  induction a with
+  | zero => simp [e, o]
+  | succ n ih =>
+    cases ih with
+    | inl h =>
+      unfold e at h
+      right
+      unfold o
+      apply Quotient.sound
+      have h_e := Quotient.exact h
+      sorry
+    | inr h => admit
+  done
 
 /- ### 3.3 (2 points).
 
