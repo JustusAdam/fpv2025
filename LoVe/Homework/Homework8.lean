@@ -310,6 +310,13 @@ instance eqv : Setoid ℕ := {
   }
 }
 
+example : Even 1 ↔ Even 3 := by
+  apply Iff.intro
+  intro h1
+  contradiction
+  intro h2
+  contradiction
+
 /- Now we'll define the quotient of ℕ by this relation. There are two elements
 of the quotient: -/
 
@@ -330,15 +337,34 @@ lemma e_or_o (x : EONat) : x = e ∨ x = o := by
   induction a with
   | zero => simp [e, o]
   | succ n ih =>
+    unfold o
     cases ih with
     | inl h =>
-      unfold e at h
       right
-      unfold o
       apply Quotient.sound
+      show eqv (n + 1) 1
+      unfold eqv
+      simp
+      apply Even.add_one
       have h_e := Quotient.exact h
-      sorry
-    | inr h => admit
+      cases h_e with
+      | intro _ mrp =>
+        exact mrp Even.zero
+    | inr h =>
+      left
+      apply Quotient.sound
+      show eqv (n + 1) 0
+      unfold eqv
+      simp
+      have h_e := Quotient.exact h
+      apply Odd.add_one
+      rw [←Nat.not_even_iff_odd]
+      intro h_even
+      cases h_e with
+      | intro mpr _ =>
+        have even_one := mpr h_even
+        contradiction
+    done
   done
 
 /- ### 3.3 (2 points).
@@ -349,4 +375,29 @@ What does the "addition table" for `EONat` look like? That is, what are `e+e`,
 `o+o`, `e+o`, and `o+e`? State and prove two of these identities. -/
 
 def add : EONat → EONat → EONat :=
-  sorry
+  Quotient.lift₂
+    (fun x y => ⟦x + y⟧)
+    (by
+      intros a1 b1 a2 b2 a_eq b_eq
+      simp
+      apply Quotient.sound
+      simp [HasEquiv.Equiv, eqv]
+      simp [HasEquiv.Equiv, eqv] at a_eq
+      simp [HasEquiv.Equiv, eqv] at b_eq
+      rw [Nat.even_add, Nat.even_add]
+      constructor
+      intro h
+      rw [←b_eq, ←a_eq]
+      exact h
+      intro h
+      rw [b_eq, a_eq]
+      exact h
+    )
+
+example : add e o = o := by
+  unfold e o add
+  dsimp
+
+example : add o e = o := by
+  unfold e o add
+  dsimp
